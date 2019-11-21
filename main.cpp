@@ -66,7 +66,10 @@ int numEntities = 0;
 int shapeType = 0;
 double minBound[4], maxBound[4];
 int pointCount = 0;
-
+float scale = 1;
+GLint scaleId;
+Glfloat translate[2] = {0.0, 0.0};
+Glint translateId;
 bool SetOpenGLAttributes();
 void PrintSDL_GL_Attributes();
 void CheckSDLError(int line);
@@ -117,6 +120,7 @@ void Render()
 
 	// Swap our buffers to make our changes visible
 	SDL_GL_SwapWindow(mainWindow);
+  
 
 }
 bool SetupBufferObjects()
@@ -127,8 +131,8 @@ bool SetupBufferObjects()
     SHPObject* obj = shapeObjects[i];
     int vertices = obj->nVertices;
     for(int j = 0; j < vertices; j++){
-      points2[counter][0] = obj->padfX[j] / 180;
-      points2[counter][1] = obj->padfY[j] / 90;
+      points2[counter][0] = obj->padfX[j];// / 180;
+      points2[counter][1] = obj->padfY[j];// / 90;
       points2[counter][2] = 0.5;
       counter++;
     }
@@ -180,6 +184,18 @@ bool SetupBufferObjects()
 		return false;
 
 	shader.UseProgram();
+
+  scaleId = glGetUniformLocation(shader.shaderProgram, "scale");
+  translateId = glGetUniformLocation(shader.shaderProgram, "translate");
+  std::cout<<GL_INVALID_VALUE<<" "<<GL_INVALID_OPERATION<<std::endl;
+  if(scaleId == GL_INVALID_VALUE){
+    std::cout<<"invalid value"<<std::endl;
+  }
+  if(scaleId == GL_INVALID_OPERATION){
+    std::cout<<"invalid operation"<<std::endl;
+  }
+
+  glUniform1f(scaleId, scale);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -285,6 +301,13 @@ int main(int argc, char *argv[])
 
 	std::cout << "Rendering..." << std::endl;
 	Render();
+  std::cout<<"scaleid "<<scaleId<<std::endl;
+  while(std::cin.ignore()){
+    scale += 0.5;
+    std::cout<<"scale: " << scale <<std::endl;
+    glUniform1f(scaleId, scale);
+    Render();
+  }
 
 	std::cout << "Rendering done!\n";
 	std::cin.ignore();
