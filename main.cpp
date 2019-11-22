@@ -86,11 +86,13 @@ void Render()
 	glClearColor(0.5, 0.5, 0.5, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	glUniform1f(scaleId, scale);
+	glUniform2f(translateId, translate[0], translate[1]);
+
 	// Invoke glDrawArrays telling that our data is a line loop and we want to draw 2-4 vertexes
 	int globalIndex = 0;
 	int startIndex = 0;
 	int endIndex;
-	std::cout << "shapeobjets size: " << shapeObjects.size() << std::endl;
 	for (int i = 0; i < shapeObjects.size(); i++) {
 		SHPObject* obj = shapeObjects[i];
 		//std::cout<<"nParts: " << obj->nParts - 1 << std::endl;
@@ -117,7 +119,7 @@ void Render()
 			glDrawArrays(GL_LINE_STRIP, globalIndex, endIndex - startIndex);
 			//SDL_GL_SwapWindow(mainWindow);
 			//waitForInput();
-			std::cout << "rendering from " << globalIndex << " to " << globalIndex + endIndex - startIndex << std::endl;
+			//std::cout << "rendering from " << globalIndex << " to " << globalIndex + endIndex - startIndex << std::endl;
 			globalIndex += endIndex - startIndex;
 			startIndex = endIndex;
 		}
@@ -146,7 +148,7 @@ bool SetupBufferObjects()
 	}
 	std::cout << counter << std::endl;
 	for (int i = 0; i < pointCount; i++) {
-		std::cout<<"("<<points2[i * 3 + 0]<<", "<<points2[i * 3 + 1]<<", "<<points2[i * 3 + 2]<<")"<<std::endl;
+		//std::cout<<"("<<points2[i * 3 + 0]<<", "<<points2[i * 3 + 1]<<", "<<points2[i * 3 + 2]<<")"<<std::endl;
 	}
 
 	// Generate and assign two Vertex Buffer Objects to our handle
@@ -190,10 +192,12 @@ bool SetupBufferObjects()
 
 	shader.UseProgram();
 
-	/*scaleId = glGetUniformLocation(shader.shaderProgram, "scale");
+	scaleId = glGetUniformLocation(shader.shaderProgram, "scale");
 	translateId = glGetUniformLocation(shader.shaderProgram, "translate");
+	std::cout << "translate: " << translateId << std::endl;
 	glUniform1f(scaleId, scale);
-*/
+	glUniform2fv(translateId, 2, translate);
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	return true;
@@ -271,7 +275,60 @@ void Cleanup()
 	// Shutdown SDL 2
 	SDL_Quit();
 }
+void windowLoop() {
+	bool loop = true;
 
+	int lastMouseX, lastMouseY;
+	bool mouseDown = false;
+
+	while (loop)
+	{
+		Render();
+
+		SDL_Event event;
+		while (SDL_PollEvent(&event))
+		{
+			if (event.type == SDL_QUIT)
+				loop = false;
+			if (event.type == SDL_MOUSEWHEEL)
+			{
+				if (event.wheel.y > 0) // scroll up
+				{
+					scale += 0.5;
+				}
+				else if (event.wheel.y < 0) // scroll down
+				{
+					scale -= 0.5;
+				}
+			}
+			if (event.type == SDL_MOUSEBUTTONDOWN) {
+				mouseDown = true;
+				lastMouseX = event.button.x;
+				lastMouseY = event.button.y;
+			}
+			if (event.type == SDL_MOUSEMOTION && mouseDown) {
+				translate[0] += (event.motion.xrel) / 180.0f;
+				translate[1] -= (event.motion.yrel) / 180.0f;
+				std::cout << "translate: [" << translate[0] << ", " << translate[1] << "]" << std::endl;
+			}
+			if (event.type == SDL_MOUSEBUTTONUP) {
+				mouseDown = false;
+			}
+
+			if (event.type == SDL_KEYDOWN)
+			{
+				switch (event.key.keysym.sym)
+				{
+				case SDLK_ESCAPE:
+					loop = false;
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+}
 int main(int argc, char *argv[])
 {
 	std::ofstream out("log.txt");
@@ -307,32 +364,9 @@ int main(int argc, char *argv[])
 	Render();
 	std::cout << "scaleid " << scaleId << std::endl;
 
-	bool loop = true;
-
-	while (loop)
-	{
-		SDL_Event event;
-		while (SDL_PollEvent(&event))
-		{
-			if (event.type == SDL_QUIT)
-				loop = false;
-
-			if (event.type == SDL_KEYDOWN)
-			{
-				switch (event.key.keysym.sym)
-				{
-				case SDLK_ESCAPE:
-					loop = false;
-					break;
-				default:
-					break;
-				}
-			}
-		}
-	}
-
 	std::cout << "Rendering done!\n";
-	std::cin.ignore();
+
+	windowLoop();
 
 	Cleanup();
 
