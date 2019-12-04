@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 #include "Shader.h"
+#include "BoatHandler.h"
+
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -36,13 +38,14 @@ const uint32_t floatsPerPoint = 3;
 // Each color has 4 values ( red, green, blue, alpha )
 const uint32_t floatsPerColor = 4;
 
+const int WINDOW_WIDTH = 800;
+const int WINDOW_HEIGHT = 600;
 
 // Create variables for storing the ID of our VAO and VBO
-GLuint vbo[2], vao[1];
+GLuint vbo[2], vao[2];
 
 // The positons of the position and color data within the VAO
 const uint32_t positionAttributeIndex = 0, colorAttributeIndex = 1;
-
 // Our wrapper to simplify the shader code
 Shader shader;
 
@@ -57,6 +60,15 @@ GLfloat translate[2] = { 0.0, 0.0 };
 GLint translateId;
 GLfloat* points2;
 
+Boat* _boat;
+BoatHandler* _boatHandler;
+
+const GLfloat triangle[3][floatsPerPoint] =
+{
+	{ 0.0,  0.433 / 90,  0.5 }, // Top
+	{ -0.5 / 90,  -0.433 / 90,  0.5 }, // Bottom left
+	{ .5 / 90, -0.433 / 90,  0.5 }, // Bottom right 
+};
 
 bool SetOpenGLAttributes();
 void PrintSDL_GL_Attributes();
@@ -89,6 +101,7 @@ void Render()
 	glUniform1f(scaleId, scale);
 	glUniform2f(translateId, translate[0], translate[1]);
 
+	glBindVertexArray(vao[0]);
 	// Invoke glDrawArrays telling that our data is a line loop and we want to draw 2-4 vertexes
 	int globalIndex = 0;
 	int startIndex = 0;
@@ -124,7 +137,8 @@ void Render()
 			startIndex = endIndex;
 		}
 	}
-	//glDrawArrays(GL_LINE_LOOP, startIndex, endIndex - startIndex);
+
+	_boatHandler->render(translateId, translate);
 
 	// Swap our buffers to make our changes visible
 	SDL_GL_SwapWindow(mainWindow);
@@ -151,42 +165,26 @@ bool SetupBufferObjects()
 		//std::cout<<"("<<points2[i * 3 + 0]<<", "<<points2[i * 3 + 1]<<", "<<points2[i * 3 + 2]<<")"<<std::endl;
 	}
 
-	// Generate and assign two Vertex Buffer Objects to our handle
-	glGenBuffers(2, vbo);
-
 	// Generate and assign a Vertex Array Object to our handle
 	glGenVertexArrays(1, vao);
+
+	// Generate and assign two Vertex Buffer Objects to our handle
+	glGenBuffers(1, vbo);
 
 	// Bind our Vertex Array Object as the current used object
 	glBindVertexArray(vao[0]);
 
-	// Positions
-	// ===================
-	// Bind our first VBO as being the active buffer and storing vertex attributes (coordinates)
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
 
 	// Copy the vertex data from diamond to our buffer
 	glBufferData(GL_ARRAY_BUFFER, (pointCount * floatsPerPoint) * sizeof(GLfloat), points2, GL_STATIC_DRAW);
+	// Enable our attribute within the current VAO
+	glEnableVertexAttribArray(positionAttributeIndex);
 	// Specify that our coordinate data is going into attribute index 0, and contains three floats per vertex
 	glVertexAttribPointer(positionAttributeIndex, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-	// Enable our attribute within the current VAO
-	glEnableVertexAttribArray(positionAttributeIndex);
+	_boatHandler->setup();
 
-	// Colors
-	// =======================
-	//glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
-
-	// Copy the vertex data from diamond to our buffer
-	//glBufferData(GL_ARRAY_BUFFER, ( points * floatsPerColor) * sizeof(GLfloat), colors, GL_STATIC_DRAW);
-
-	// Specify that our coordinate data is going into attribute index 0, and contains three floats per vertex
-	//glVertexAttribPointer(colorAttributeIndex, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-	// Note : We didn't enable the colors here!
-
-	// Set up shader ( will be covered in the next part )
-	// ===================
 	if (!shader.Init())
 		return false;
 
@@ -214,7 +212,7 @@ bool Init()
 
 	// Create our window centered at 512x512 resolution
 	mainWindow = SDL_CreateWindow(programName.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-		800, 600, SDL_WINDOW_OPENGL);
+		WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
 
 	// Check that everything worked out okay
 	if (!mainWindow)
@@ -279,12 +277,21 @@ void windowLoop() {
 	bool loop = true;
 
 	int lastMouseX, lastMouseY;
+	float transStartX, transStartY;
 	bool mouseDown = false;
+
+	Uint64 NOW = SDL_GetPerformanceCounter();
+	Uint64 LAST = 0;
+	double deltaTime = 0;
+
 
 	while (loop)
 	{
-		Render();
+		LAST = NOW;
+		NOW = SDL_GetPerformanceCounter();
 
+		deltaTime = (double)((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+		std::cout << "deltaTime: " << deltaTime << std::endl;
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
@@ -305,11 +312,12 @@ void windowLoop() {
 				mouseDown = true;
 				lastMouseX = event.button.x;
 				lastMouseY = event.button.y;
+				transStartX = translate[0];
+				transStartY = translate[1];
 			}
 			if (event.type == SDL_MOUSEMOTION && mouseDown) {
-				translate[0] += (event.motion.xrel) / 180.0f;
-				translate[1] -= (event.motion.yrel) / 180.0f;
-				std::cout << "translate: [" << translate[0] << ", " << translate[1] << "]" << std::endl;
+				translate[0] = transStartX + ((event.motion.x - lastMouseX) / ((float)(WINDOW_WIDTH) / 2 * scale));
+				translate[1] = transStartY - ((event.motion.y - lastMouseY) / ((float)(WINDOW_HEIGHT) / 2 * scale));
 			}
 			if (event.type == SDL_MOUSEBUTTONUP) {
 				mouseDown = false;
@@ -327,6 +335,8 @@ void windowLoop() {
 				}
 			}
 		}
+
+		Render();
 	}
 }
 int main(int argc, char *argv[])
@@ -343,12 +353,15 @@ int main(int argc, char *argv[])
 		pointCount += obj->nVertices;
 		shapeObjects.push_back(obj);
 	}
-	std::cout << "point count:" << pointCount << std::endl;
+
+	_boatHandler = new BoatHandler();
+
 
 	if (!Init()) {
 		std::cout << "failed to init\n";
 		return -1;
 	}
+
 
 	// Clear our buffer with a grey background
 	glClearColor(0.5, 0.5, 0.5, 1.0);
