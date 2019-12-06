@@ -12,7 +12,7 @@
 #include <vector>
 #include "Shader.h"
 #include "BoatHandler.h"
-
+#include "Map.h"
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -29,46 +29,22 @@ SDL_Window *mainWindow;
 // Our opengl context handle
 SDL_GLContext mainContext;
 
-// Our object has 4 points
-const uint32_t points = 4;
-
-// Each poin has three values ( x, y, z)
-const uint32_t floatsPerPoint = 3;
-
-// Each color has 4 values ( red, green, blue, alpha )
-const uint32_t floatsPerColor = 4;
-
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
 
-// Create variables for storing the ID of our VAO and VBO
-GLuint vbo[2], vao[2];
-
-// The positons of the position and color data within the VAO
-const uint32_t positionAttributeIndex = 0, colorAttributeIndex = 1;
 // Our wrapper to simplify the shader code
 Shader shader;
 
-std::vector<SHPObject*> shapeObjects;
-int numEntities = 0;
-int shapeType = 0;
-double minBound[4], maxBound[4];
-int pointCount = 0;
+Map* map;
+
 float scale = 1;
 GLint scaleId;
 GLfloat translate[2] = { 0.0, 0.0 };
 GLint translateId;
-GLfloat* points2;
+GLint transformMatId;
 
-Boat* _boat;
 BoatHandler* _boatHandler;
 
-const GLfloat triangle[3][floatsPerPoint] =
-{
-	{ 0.0,  0.433 / 90,  0.5 }, // Top
-	{ -0.5 / 90,  -0.433 / 90,  0.5 }, // Bottom left
-	{ .5 / 90, -0.433 / 90,  0.5 }, // Bottom right 
-};
 
 bool SetOpenGLAttributes();
 void PrintSDL_GL_Attributes();
@@ -101,42 +77,7 @@ void Render()
 	glUniform1f(scaleId, scale);
 	glUniform2f(translateId, translate[0], translate[1]);
 
-	glBindVertexArray(vao[0]);
-	// Invoke glDrawArrays telling that our data is a line loop and we want to draw 2-4 vertexes
-	int globalIndex = 0;
-	int startIndex = 0;
-	int endIndex;
-	for (int i = 0; i < shapeObjects.size(); i++) {
-		SHPObject* obj = shapeObjects[i];
-		//std::cout<<"nParts: " << obj->nParts - 1 << std::endl;
-		int parts;
-		if (obj->nParts > 1) {
-			parts = obj->nParts;
-		}
-		else {
-			parts = 1;
-		}
-		startIndex = 0;
-		for (int j = 0; j < parts; j++) {
-			if (parts == 1) {
-				endIndex = obj->nVertices;
-			}
-			else {
-				if (j == parts - 1) {
-					endIndex = obj->nVertices;
-				}
-				else {
-					endIndex = obj->panPartStart[j + 1];
-				}
-			}
-			glDrawArrays(GL_LINE_STRIP, globalIndex, endIndex - startIndex);
-			//SDL_GL_SwapWindow(mainWindow);
-			//waitForInput();
-			//std::cout << "rendering from " << globalIndex << " to " << globalIndex + endIndex - startIndex << std::endl;
-			globalIndex += endIndex - startIndex;
-			startIndex = endIndex;
-		}
-	}
+	map->render();
 
 	_boatHandler->render(translateId, translate);
 
@@ -147,43 +88,7 @@ void Render()
 }
 bool SetupBufferObjects()
 {
-	points2 = new GLfloat[pointCount * 3];
-
-	int counter = 0;
-	for (int i = 0; i < numEntities; i++) {
-		SHPObject* obj = shapeObjects[i];
-		int vertices = obj->nVertices;
-		for (int j = 0; j < vertices; j++) {
-			points2[counter * 3 + 0] = obj->padfX[j] / 180;
-			points2[counter * 3 + 1] = obj->padfY[j] / 90;
-			points2[counter * 3 + 2] = 0.5;
-			counter++;
-		}
-	}
-	std::cout << counter << std::endl;
-	for (int i = 0; i < pointCount; i++) {
-		//std::cout<<"("<<points2[i * 3 + 0]<<", "<<points2[i * 3 + 1]<<", "<<points2[i * 3 + 2]<<")"<<std::endl;
-	}
-
-	// Generate and assign a Vertex Array Object to our handle
-	glGenVertexArrays(1, vao);
-
-	// Generate and assign two Vertex Buffer Objects to our handle
-	glGenBuffers(1, vbo);
-
-	// Bind our Vertex Array Object as the current used object
-	glBindVertexArray(vao[0]);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-
-	// Copy the vertex data from diamond to our buffer
-	glBufferData(GL_ARRAY_BUFFER, (pointCount * floatsPerPoint) * sizeof(GLfloat), points2, GL_STATIC_DRAW);
-	// Enable our attribute within the current VAO
-	glEnableVertexAttribArray(positionAttributeIndex);
-	// Specify that our coordinate data is going into attribute index 0, and contains three floats per vertex
-	glVertexAttribPointer(positionAttributeIndex, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-	_boatHandler->setup();
+	map->init();
 
 	if (!shader.Init())
 		return false;
@@ -192,11 +97,17 @@ bool SetupBufferObjects()
 
 	scaleId = glGetUniformLocation(shader.shaderProgram, "scale");
 	translateId = glGetUniformLocation(shader.shaderProgram, "translate");
-	std::cout << "translate: " << translateId << std::endl;
+	transformMatId = glGetUniformLocation(shader.shaderProgram, "transform");
+
 	glUniform1f(scaleId, scale);
 	glUniform2fv(translateId, 2, translate);
+	glm::mat4 identity( 1.0f );
+	glUniformMatrix4fv(transformMatId, 1, GL_FALSE, glm::value_ptr(identity));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	_boatHandler->setup(transformMatId);
+
 
 	return true;
 }
@@ -256,13 +167,13 @@ bool SetOpenGLAttributes()
 
 void Cleanup()
 {
-	delete[] points2;
+	//delete[] points2;
 	// Cleanup all the things we bound and allocated
 	shader.CleanUp();
 
 	glDisableVertexAttribArray(0);
-	glDeleteBuffers(1, vbo);
-	glDeleteVertexArrays(1, vao);
+	//glDeleteBuffers(1, vbo);
+	//glDeleteVertexArrays(1, vao);
 
 	// Delete our OpengL context
 	SDL_GL_DeleteContext(mainContext);
@@ -291,7 +202,10 @@ void windowLoop() {
 		NOW = SDL_GetPerformanceCounter();
 
 		deltaTime = (double)((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-		std::cout << "deltaTime: " << deltaTime << std::endl;
+		//std::cout << "deltaTime: " << deltaTime << std::endl;
+
+		_boatHandler->update();
+
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
@@ -339,35 +253,22 @@ void windowLoop() {
 		Render();
 	}
 }
+
+
+
 int main(int argc, char *argv[])
 {
 	std::ofstream out("log.txt");
 	std::cout.rdbuf(out.rdbuf());
 	std::cout << "made it here" << std::endl;
-	SHPHandle _handle = SHPOpen("C:/Users/Alex Kinley/gitRepos/BoatSimulation/shapelib/110m_physical/ne_110m_land", "rb");
-
-	SHPGetInfo(_handle, &numEntities, &shapeType, minBound, maxBound);
-	std::cout << numEntities << std::endl;
-	for (int i = 0; i < numEntities; i++) {
-		SHPObject* obj = SHPReadObject(_handle, i);
-		pointCount += obj->nVertices;
-		shapeObjects.push_back(obj);
-	}
+	map = new Map("C:/Users/Alex Kinley/gitRepos/BoatSimulation/shapelib/110m_physical/ne_110m_land");
 
 	_boatHandler = new BoatHandler();
-
 
 	if (!Init()) {
 		std::cout << "failed to init\n";
 		return -1;
 	}
-
-
-	// Clear our buffer with a grey background
-	glClearColor(0.5, 0.5, 0.5, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	SDL_GL_SwapWindow(mainWindow);
 
 	std::cout << "Seting up VBO + VAO..." << std::endl;
 	if (!SetupBufferObjects())
@@ -375,10 +276,9 @@ int main(int argc, char *argv[])
 
 	std::cout << "Rendering..." << std::endl;
 	Render();
-	std::cout << "scaleid " << scaleId << std::endl;
 
 	std::cout << "Rendering done!\n";
-
+	waitForInput();
 	windowLoop();
 
 	Cleanup();
