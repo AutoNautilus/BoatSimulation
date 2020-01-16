@@ -67,9 +67,27 @@ void BoatHandler::setup(GLint transformMatId) {
 }
 
 void BoatHandler::update() {
-	_boat->update();
+	if (!_paused) {
+		_boat->update();
+	}
 }
 
+void BoatHandler::restart() {
+	float startCoords[2] = { -70.929406, 42.380138, }; //long, lat near boston
+	delete _boat;
+	_boat = new Boat(startCoords);
+	std::cout << "boat is at (" << _boat->getLong() << ", " << _boat->getLat() << ")" << std::endl;
+
+
+	_boat->addWayPointLast(glm::vec2(-59.0f, 20.0f));
+	_boat->addWayPointLast(glm::vec2(-11.0f, 46.0f));
+}
+void BoatHandler::togglePause() {
+	_paused = !_paused;
+}
+bool BoatHandler::isPaused() {
+	return _paused;
+}
 
 void BoatHandler::render(GLint translateId, GLfloat translate[2]) {
 	glBindVertexArray(vao[0]);

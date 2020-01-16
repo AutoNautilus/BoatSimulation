@@ -1,18 +1,13 @@
-// Headerphile.com OpenGL Tutorial part 2
-// A simple example involving VBOs and a VAO to draw a simple square
-// Source code is an adaption / simplicication of : https://www.opengl.org/wiki/Tutorial2:_VAOs,_VBOs,_Vertex_and_Fragment_Shaders_(C_/_SDL) 
-
-// Compile :
-// 	clang++ main.cpp -lGL -lGLEW -lSDL2 -std=c++11 -o Test
-// or
-// 	g++ main.cpp -lGL -lGLEW -lSDL2 -std=c++11 -o Test
-//
 #include <iostream>
 #include <string>
 #include <vector>
 #include "Shader.h"
 #include "BoatHandler.h"
 #include "Map.h"
+
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_opengl3.h"
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -24,13 +19,17 @@
 std::string programName = "Headerphile SDL2 - OpenGL thing";
 
 // Our SDL_Window ( just like with SDL2 wihout OpenGL)
-SDL_Window *mainWindow;
+SDL_Window* mainWindow;
+SDL_Window* debugWindow;
 
 // Our opengl context handle
 SDL_GLContext mainContext;
+SDL_GLContext debugContext;
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
+const int DEBUG_WINDOW_WIDTH = 600;
+const int DEBUG_WINDOW_HEIGHT = 500;
 
 // Our wrapper to simplify the shader code
 Shader shader;
@@ -45,6 +44,8 @@ GLint transformMatId;
 
 BoatHandler* _boatHandler;
 
+ImGuiIO* io;
+ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 bool SetOpenGLAttributes();
 void PrintSDL_GL_Attributes();
@@ -66,11 +67,63 @@ void waitForInput() {
 	}
 }
 
+void ImGuiDraw() {
+	// Start the Dear ImGui frame
+	SDL_GL_MakeCurrent(debugWindow, debugContext);
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplSDL2_NewFrame(debugWindow);
+	ImGui::NewFrame();
+
+	
+	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+	{
+		ImGui::Begin("Controls");                         
+
+		if (ImGui::Button("Restart")) {
+			_boatHandler->restart();
+		}
+
+		if (_boatHandler->isPaused()) {
+			if (ImGui::Button("Unpause")) {
+				_boatHandler->togglePause();
+			}
+		}
+		else {
+			if (ImGui::Button("Pause")) {
+				_boatHandler->togglePause();
+			}
+		}
+
+		Boat* boat = _boatHandler->getBoat();
+		float lat = boat->getLat();
+		float longitude = boat->getLong();
+		float heading = boat->getHeading();
+		char text[100];
+		sprintf(text, "Boat cooridnates: ( %f, %f)", lat, longitude);
+		ImGui::Text(text); //displaying the boat coordinates
+		sprintf(text, "Boat heading: %f", heading);
+		ImGui::Text(text); //displaying the boat heading
+
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::End();
+	}
+
+	ImGui::Render();
+	glViewport(0, 0, (int)io->DisplaySize.x, (int)io->DisplaySize.y);
+	glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+	glClear(GL_COLOR_BUFFER_BIT);
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	SDL_GL_SwapWindow(debugWindow);
+}
+
+
 void Render()
 {
 	// First, render a square without any colors ( all vertexes will be black )
 	// ===================
 	// Make our background grey
+	SDL_GL_MakeCurrent(mainWindow, mainContext);
+	shader.UseProgram();
 	glClearColor(0.5, 0.5, 0.5, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -80,12 +133,16 @@ void Render()
 	map->render();
 
 	_boatHandler->render(translateId, translate);
-
-	// Swap our buffers to make our changes visible
 	SDL_GL_SwapWindow(mainWindow);
+
+	ImGuiDraw();
+	// Swap our buffers to make our changes visible
+	
 
 
 }
+
+
 bool SetupBufferObjects()
 {
 	map->init();
@@ -124,11 +181,19 @@ bool Init()
 	// Create our window centered at 512x512 resolution
 	mainWindow = SDL_CreateWindow(programName.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
+	debugWindow = SDL_CreateWindow(programName.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+		DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
 
 	// Check that everything worked out okay
 	if (!mainWindow)
 	{
-		std::cout << "Unable to create window\n" << std::endl;;
+		std::cout << "Unable to create main window\n" << std::endl;;
+		CheckSDLError(__LINE__);
+		return false;
+	}
+	if (!debugWindow)
+	{
+		std::cout << "Unable to create debug window\n" << std::endl;;
 		CheckSDLError(__LINE__);
 		return false;
 	}
@@ -137,14 +202,29 @@ bool Init()
 
 	// Create our opengl context and attach it to our window
 	mainContext = SDL_GL_CreateContext(mainWindow);
+	debugContext = SDL_GL_CreateContext(debugWindow);
 
 	// This makes our buffer swap syncronized with the monitor's vertical refresh
 	SDL_GL_SetSwapInterval(1);
 
 	// Init GLEW
+	SDL_GL_MakeCurrent(mainWindow, mainContext);
 	glewExperimental = GL_TRUE;
 	glewInit();
 
+	//IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	io = &ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsClassic();
+
+	// Setup Platform/Renderer bindings
+	ImGui_ImplSDL2_InitForOpenGL(debugWindow, debugContext);
+	ImGui_ImplOpenGL3_Init("#version 130");
 	return true;
 }
 
@@ -175,11 +255,16 @@ void Cleanup()
 	//glDeleteBuffers(1, vbo);
 	//glDeleteVertexArrays(1, vao);
 
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplSDL2_Shutdown();
+	ImGui::DestroyContext();
+
 	// Delete our OpengL context
 	SDL_GL_DeleteContext(mainContext);
-
+	SDL_GL_DeleteContext(debugContext);
 	// Destroy our window
 	SDL_DestroyWindow(mainWindow);
+	SDL_DestroyWindow(debugWindow);
 
 	// Shutdown SDL 2
 	SDL_Quit();
@@ -195,7 +280,6 @@ void windowLoop() {
 	Uint64 LAST = 0;
 	double deltaTime = 0;
 
-
 	while (loop)
 	{
 		LAST = NOW;
@@ -209,6 +293,7 @@ void windowLoop() {
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
+			ImGui_ImplSDL2_ProcessEvent(&event);
 			if (event.type == SDL_QUIT)
 				loop = false;
 			if (event.type == SDL_MOUSEWHEEL)
@@ -278,7 +363,7 @@ int main(int argc, char *argv[])
 	Render();
 
 	std::cout << "Rendering done!\n";
-	waitForInput();
+	//waitForInput();
 	windowLoop();
 
 	Cleanup();

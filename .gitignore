@@ -1,5 +1,6 @@
 glew-2.1.0/
 SDL2-2.0.10/
+imgui/
 build/
 includes/
 libs/

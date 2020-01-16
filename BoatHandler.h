@@ -15,8 +15,13 @@ public:
 	void setup(GLint transformMatId);
 	void render(GLint translateId, GLfloat translate[2]);
 	void update();
-
+	void restart();
+	void togglePause();
+	bool isPaused();
+	Boat* getBoat() { return _boat; }
 private:
+
+	bool _paused = false;
 
 	void makeCircle();
 	int circlePoints = 24;
