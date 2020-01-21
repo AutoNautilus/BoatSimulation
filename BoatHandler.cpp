@@ -18,15 +18,7 @@ void print_vec(const std::vector<glm::vec2>& vec)
 
 
 BoatHandler::BoatHandler() {
-	float startCoords[2] = { -70.929406, 42.380138, }; //long, lat near boston
-	_boat = new Boat(startCoords);
-	std::cout << "boat is at (" << _boat->getLong() << ", " << _boat->getLat() << ")" << std::endl;
-	
-	
-	_boat->addWayPointLast(glm::vec2(-59.0f, 20.0f));
-	_boat->addWayPointLast(glm::vec2(-11.0f, 46.0f));
-
-	
+	restart();
 	
 	identity = glm::mat4(1.0f);
 }
@@ -68,13 +60,21 @@ void BoatHandler::setup(GLint transformMatId) {
 
 void BoatHandler::update() {
 	if (!_paused) {
-		_boat->update();
+		_elapsedTime += timeIncr;
+		_boat->update(timeIncr);
+		//togglePause();
 	}
 }
 
 void BoatHandler::restart() {
-	float startCoords[2] = { -70.929406, 42.380138, }; //long, lat near boston
-	delete _boat;
+	_elapsedTime = 0;
+
+	float startCoords[2] = { -70.0, 42.0 }; //long, lat in sorta the right area but much easier to do math with
+	//float startCoords[2] = { -70.929406, 42.380138, }; //long, lat near boston
+	if (_boat != 0) {
+		delete _boat;
+	}
+
 	_boat = new Boat(startCoords);
 	std::cout << "boat is at (" << _boat->getLong() << ", " << _boat->getLat() << ")" << std::endl;
 
@@ -88,6 +88,7 @@ void BoatHandler::togglePause() {
 bool BoatHandler::isPaused() {
 	return _paused;
 }
+
 
 void BoatHandler::render(GLint translateId, GLfloat translate[2]) {
 	glBindVertexArray(vao[0]);
@@ -124,4 +125,8 @@ void BoatHandler::makeCircle() {
 		_circle[i * 3 + 1] = glm::sin(angle) / 90.0f;
 		_circle[i * 3 + 2] = 0.5f;
 	}
+}
+
+float BoatHandler::getElapsedTime() {
+	return _elapsedTime;
 }

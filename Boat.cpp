@@ -1,14 +1,20 @@
 #include "Boat.h"
 
+double degToRad(double deg) {
+	return deg * 3.141592653 / 180.0;
+}
+double radToDeg(double rad) {
+	return rad * 180.0 / 3.141592653;
+}
 
 Boat::Boat(float startCoords[2]) {
 	_long = startCoords[0];
 	_lat = startCoords[1];
 	_heading = 60.0f;
-	_velocity = 1.0f;
+	_velocity = 2.0f; // in m/s
 }
 
-void Boat::update() {
+void Boat::update(float deltaTime) { //deltaTime in hours
 	if (_wayPoints.size() == 0) {
 		return;
 	}
@@ -26,7 +32,7 @@ void Boat::update() {
 	
 	_heading = calculateHeading(nextPoint);
 
-	moveForward(0.1f);
+	moveForward(deltaTime);
 }
 
 bool Boat::reachedWayPoint(glm::vec2 wayPoint, float tolerance) {
@@ -57,8 +63,35 @@ float Boat::calculateHeading(glm::vec2 wayPoint) {
 }
 
 void Boat::moveForward(float deltaTime) {
-	_long += deltaTime * (_velocity * glm::cos(glm::radians(_heading)));
-	_lat += deltaTime * (_velocity * glm::sin(glm::radians(_heading)));
+	char msg[100];
+	sprintf(msg, "heading is: %f", _heading);
+	this->log(msg);
+	double headingRads = degToRad(_heading);
+	sprintf(msg, "heading in rads is: %f", headingRads);
+	this->log(msg);
+	
+	float timeInSec = deltaTime * 60 * 60;
+	
+	float distanceMoved = timeInSec * _velocity; //in meters
+	
+	sprintf(msg, "distanced moved: %f", distanceMoved);
+	this->log(msg);
+
+	long double centralAngle = distanceMoved / EARTH_RADIUS; //in radians
+	sprintf(msg, "centralAngle: %f", centralAngle);
+	this->log(msg);
+	double latOne = degToRad(_lat);
+	double alpha = degToRad(90 - _heading);
+	sprintf(msg, "alpha: %f", alpha);
+	this->log(msg);
+	double latTwo = asin(sin(latOne) * cos(centralAngle) + cos(latOne)*sin(centralAngle)*cos(alpha));
+	double deltaLong = asin((sin(alpha) * sin(centralAngle)) / cos(latTwo));
+	_lat = radToDeg(latTwo);
+	_long += radToDeg(deltaLong);
+}
+
+void Boat::log(std::string msg) {
+	_log.push_back(msg);
 }
 
 void Boat::addWayPointLast(glm::vec2 wayPoint) {
@@ -72,5 +105,6 @@ void Boat::addWayPointFirst(glm::vec2 wayPoint) {
 float Boat::getLong() { return _long; }
 float Boat::getLat() { return _lat; }
 float Boat::getHeading() { return _heading; }
-
+float Boat::getVelocity() { return _velocity; }
+std::vector<std::string> Boat::getLog() { return _log; }
 std::vector<glm::vec2> Boat::getWayPoints() { return _wayPoints; }

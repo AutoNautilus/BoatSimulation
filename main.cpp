@@ -98,12 +98,31 @@ void ImGuiDraw() {
 		float lat = boat->getLat();
 		float longitude = boat->getLong();
 		float heading = boat->getHeading();
+		float velocity = boat->getVelocity();
+		std::vector<glm::vec2> wayPoints = boat->getWayPoints();
+
 		char text[100];
-		sprintf(text, "Boat cooridnates: ( %f, %f)", lat, longitude);
+		sprintf(text, "Time: %f hours", _boatHandler->getElapsedTime());
+		ImGui::Text(text); //displaying the elapsed time
+		sprintf(text, "Boat cooridnates: ( %f, %f)", longitude, lat);
 		ImGui::Text(text); //displaying the boat coordinates
 		sprintf(text, "Boat heading: %f", heading);
 		ImGui::Text(text); //displaying the boat heading
+		sprintf(text, "Boat velocity: %f m/s", velocity);
+		ImGui::Text(text); //displaying the boat velocity
+		//should probably use an iterator but this will do
+		ImGui::Text("Waypoints");
+		for (int i = 0; i < wayPoints.size(); i++) {
+			glm::vec2 point = wayPoints[i];
+			sprintf(text, "\t( %f, %f)", point.x, point.y);
+			ImGui::Text(text);
+		}
 
+		std::vector <std::string> log = boat->getLog();
+		ImGui::Text("\nLog");
+		for (int i = 0; i < log.size(); i++) {
+			ImGui::Text(log[i].c_str());
+		}
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		ImGui::End();
 	}
@@ -136,10 +155,6 @@ void Render()
 	SDL_GL_SwapWindow(mainWindow);
 
 	ImGuiDraw();
-	// Swap our buffers to make our changes visible
-	
-
-
 }
 
 
