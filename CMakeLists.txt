@@ -1,23 +1,32 @@
-#cmake_minimum_required(VERSION 2.8.4)
+cmake_minimum_required(VERSION 2.8.4)
 
-#project(BoatSimulation)
+project(BoatSimulation)
 
-#find_package(SDL2 CONFIG REQUIRED)
-#find_library(SDL2_MAIN SDL2main)
-#find_package(GLEW REQUIRED)
-#find_package(glm CONFIG REQUIRED)
-#find_package(OpenGL REQUIRED)
+include_directories(include)
+file(GLOB boatSimulation_SRC
+    "src/*.cpp"
+    )
+set(CMAKE_CXX_FLAGS "-std=c++11")
+
+find_package(OpenGL REQUIRED)
+find_package(GLEW REQUIRED)
+if (GLEW_FOUND)
+    include_directories(${GLEW_INCLUDE_DIRS})
+    link_libraries(${GLEW_LIBRARIES})
+endif()
 
 #link_directories("C:/vcpkg/installed/x86-windows/lib")
-#link_directories("shapelib/build/dll/Debug")
+link_directories("shapelib/build/dll/Debug")
+link_directories(${CMAKE_SOURCE_DIR}/deps/lib)
 
-#add_executable(BoatSimulation WIN32 main.cpp)
+add_subdirectory(${CMAKE_SOURCE_DIR}/deps/SDL2-2.0.10)
+add_executable(BoatSimulation ${boatSimulation_SRC})
 
-#include_directories(${OPENGL_INCLUDE_DIRS})
-#arget_link_libraries(BoatSimulation shp)
-#target_link_libraries(BoatSimulation ${OPENGL_LIBRARIES})
+include_directories(${OPENGL_INCLUDE_DIRS})
 
-#target_link_libraries(BoatSimulation PRIVATE SDL2 ${SDL2_MAIN})
-#target_link_libraries(BoatSimulation PRIVATE glew32)
-#target_link_libraries(BoatSimulation PRIVATE glm)
+include_directories(deps/includes)
+include_directories(deps)
+target_link_libraries(BoatSimulation shp)
+target_link_libraries(BoatSimulation ${OPENGL_LIBRARIES})
 
+target_link_libraries(BoatSimulation PRIVATE SDL2 ${SDL2_MAIN})

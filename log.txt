@@ -1,0 +1,12 @@
+made it here
+127
+point count:5143
+Seting up VBO + VAO...
+5143
+Linking Vertex shader
+=======================================
+Shader compilation failed : 
+	Error info : 0:1(1): error: syntax error, unexpected $end
+
+=======================================
+

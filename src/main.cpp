@@ -358,10 +358,10 @@ void windowLoop() {
 
 int main(int argc, char *argv[])
 {
-	std::ofstream out("log.txt");
-	std::cout.rdbuf(out.rdbuf());
+	//std::ofstream out("log.txt");
+	//std::cout.rdbuf(out.rdbuf());
 	std::cout << "made it here" << std::endl;
-	map = new Map("C:/Users/Alex Kinley/gitRepos/BoatSimulation/shapelib/110m_physical/ne_110m_land");
+	map = new Map("../deps/shapelib/110m_physical/ne_110m_land");
 
 	_boatHandler = new BoatHandler();
 
