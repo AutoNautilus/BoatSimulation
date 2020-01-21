@@ -19,8 +19,10 @@ endif()
 link_directories("shapelib/build/dll/Debug")
 link_directories(${CMAKE_SOURCE_DIR}/deps/lib)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/SDL2-2.0.10)
+#add_subdirectory(${CMAKE_SOURCE_DIR}/deps/SDL2-2.0.10)
 add_executable(BoatSimulation ${boatSimulation_SRC})
+
+target_link_libraries(BoatSimulation SDL2 SDL2main)
 
 include_directories(${OPENGL_INCLUDE_DIRS})
 
@@ -28,5 +30,5 @@ include_directories(deps/includes)
 include_directories(deps)
 target_link_libraries(BoatSimulation shp)
 target_link_libraries(BoatSimulation ${OPENGL_LIBRARIES})
+target_link_libraries(BoatSimulation glew32)
 
-target_link_libraries(BoatSimulation PRIVATE SDL2 ${SDL2_MAIN})
