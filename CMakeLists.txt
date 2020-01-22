@@ -30,10 +30,11 @@ include_directories(deps/includes)
 include_directories(deps)
 target_link_libraries(BoatSimulation shp)
 target_link_libraries(BoatSimulation ${OPENGL_LIBRARIES})
-if (GLEW_FOUND)
-  target_link_libraries(BoatSimulation ${GLEW_LIBRARIES})
+
+if(WIN32)
+  target_link_libraries(BoatSimulation glew32)
 else()
-  target_link_libraries(BoatSimulation glew)
+  target_link_libraries(BoatSimulation ${GLEW_LIBRARIES})
 endif()
 
 
