@@ -80,6 +80,10 @@ void Window::CheckSDLError(int line = -1)
 }
 void Window::render(){
   SDL_GL_MakeCurrent(_window, _context);
+
+  for (int i = 0; i < _renderers.size(); i++) {
+	  _renderers[i]->render();
+  }
 }
 
 void Window::swapWindow(){
@@ -96,3 +100,7 @@ SDL_GLContext Window::getContext(){
   return _context;
 }
 
+
+void Window::addRenderer(Renderer* renderer) {
+	_renderers.push_back(renderer);
+}

@@ -5,6 +5,7 @@
 
 #include "shapelib/shapefil.h"
 #include <GL/glew.h>
+#include "Renderer.h"
 
 class Map {
 public:
@@ -13,6 +14,8 @@ public:
 	void init();
 
 	void render();
+
+	Renderer* makeRenderer();
 
 private:
 	const uint32_t positionAttributeIndex = 0;

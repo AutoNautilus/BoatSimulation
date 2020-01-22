@@ -112,3 +112,45 @@ void Map::render() {
 	glBindVertexArray(vao[2]);
 	glDrawArrays(GL_LINE_STRIP, 0, 6);
 }
+
+Renderer* Map::makeRenderer() {
+	Renderer* renderer = new Renderer();
+
+	int globalIndex = 0;
+	int startIndex = 0;
+	int endIndex;
+	for (int i = 0; i < shapeObjects.size(); i++) {
+		SHPObject* obj = shapeObjects[i];
+		int parts;
+		if (obj->nParts > 1) {
+			parts = obj->nParts;
+		}
+		else {
+			parts = 1;
+		}
+		startIndex = 0;
+		for (int j = 0; j < parts; j++) {
+			if (parts == 1) {
+				endIndex = obj->nVertices;
+			}
+			else {
+				if (j == parts - 1) {
+					endIndex = obj->nVertices;
+				}
+				else {
+					endIndex = obj->panPartStart[j + 1];
+				}
+			}
+			//renderer->addMesh(new Mesh(&points2[globalIndex], endIndex - startIndex, 3));
+			//glDrawArrays(GL_LINE_STRIP, globalIndex, endIndex - startIndex);
+			globalIndex += endIndex - startIndex;
+			startIndex = endIndex;
+		}
+	}
+	renderer->addMesh(new Mesh(points2, pointCount, 3));
+	renderer->addMesh(new Mesh(eastLine, 5, 3));
+	renderer->addMesh(new Mesh(westLine, 6, 3));
+
+	renderer->init();
+	return renderer;
+}

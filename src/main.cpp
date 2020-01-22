@@ -121,19 +121,19 @@ void ImGuiDraw() {
 
 void Render()
 {
-  mainWindow->render();
+	mainWindow->render();
 
-	shader.UseProgram();
-	glClearColor(0.5, 0.5, 0.5, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
+	//shader.UseProgram();
+	//glClearColor(0.5, 0.5, 0.5, 1.0);
+	//glClear(GL_COLOR_BUFFER_BIT);
 
 	glUniform1f(scaleId, scale);
 	glUniform2f(translateId, translate[0], translate[1]);
 
-	map->render();
+	//map->render();
 
 	_boatHandler->render(translateId, translate);
-  mainWindow->swapWindow();
+	 mainWindow->swapWindow();
 
 	ImGuiDraw();
 }
@@ -143,7 +143,7 @@ bool SetupBufferObjects()
 {
 
 	map->init();
-
+	mainWindow->addRenderer(map->makeRenderer());
 	if (!shader.Init())
 		return false;
 
@@ -182,7 +182,7 @@ bool Init()
     std::cout<<"failed to make windows"<<std::endl;
     return false;
   }
-
+ 
   //Make the main window the current context
 	mainWindow->render();
 	//IMGUI_CHECKVERSION();
