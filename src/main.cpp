@@ -4,6 +4,7 @@
 #include "Shader.h"
 #include "BoatHandler.h"
 #include "Map.h"
+#include "Window.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -16,15 +17,8 @@
 
 #define PROGRAM_NAME "Tutorial2"
 
-std::string programName = "Headerphile SDL2 - OpenGL thing";
-
-// Our SDL_Window ( just like with SDL2 wihout OpenGL)
-SDL_Window* mainWindow;
-SDL_Window* debugWindow;
-
-// Our opengl context handle
-SDL_GLContext mainContext;
-SDL_GLContext debugContext;
+Window* mainWindow;
+Window* debugWindow;
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
@@ -47,7 +41,6 @@ BoatHandler* _boatHandler;
 ImGuiIO* io;
 ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-bool SetOpenGLAttributes();
 void PrintSDL_GL_Attributes();
 void CheckSDLError(int line);
 
@@ -69,15 +62,11 @@ void waitForInput() {
 
 void ImGuiDraw() {
 	// Start the Dear ImGui frame
-	SDL_GL_MakeCurrent(debugWindow, debugContext);
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplSDL2_NewFrame(debugWindow);
-	ImGui::NewFrame();
-
-	
+  debugWindow->render();
+  debugWindow->ImGuiNewFrame();
 	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
 	{
-		ImGui::Begin("Controls");                         
+		ImGui::Begin("Controls");
 
 		if (ImGui::Button("Restart")) {
 			_boatHandler->restart();
@@ -101,21 +90,15 @@ void ImGuiDraw() {
 		float velocity = boat->getVelocity();
 		std::vector<glm::vec2> wayPoints = boat->getWayPoints();
 
-		char text[100];
-		sprintf(text, "Time: %f hours", _boatHandler->getElapsedTime());
-		ImGui::Text(text); //displaying the elapsed time
-		sprintf(text, "Boat cooridnates: ( %f, %f)", longitude, lat);
-		ImGui::Text(text); //displaying the boat coordinates
-		sprintf(text, "Boat heading: %f", heading);
-		ImGui::Text(text); //displaying the boat heading
-		sprintf(text, "Boat velocity: %f m/s", velocity);
-		ImGui::Text(text); //displaying the boat velocity
+		ImGui::Text("Time: %f hours", _boatHandler->getElapsedTime()); //displaying the elapsed time
+		ImGui::Text("Boat cooridnates: ( %f, %f)", longitude, lat); //displaying the boat coordinates
+		ImGui::Text("Boat heading: %f", heading); //displaying the boat heading
+		ImGui::Text("Boat velocity: %f m/s", velocity); //displaying the boat velocity
 		//should probably use an iterator but this will do
 		ImGui::Text("Waypoints");
 		for (int i = 0; i < wayPoints.size(); i++) {
 			glm::vec2 point = wayPoints[i];
-			sprintf(text, "\t( %f, %f)", point.x, point.y);
-			ImGui::Text(text);
+			ImGui::Text("\t( %f, %f)", point.x, point.y);
 		}
 
 		std::vector <std::string> log = boat->getLog();
@@ -132,7 +115,8 @@ void ImGuiDraw() {
 	glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 	glClear(GL_COLOR_BUFFER_BIT);
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	SDL_GL_SwapWindow(debugWindow);
+  debugWindow->swapWindow();
+	//SDL_GL_SwapWindow(debugWindow);
 }
 
 
@@ -141,7 +125,8 @@ void Render()
 	// First, render a square without any colors ( all vertexes will be black )
 	// ===================
 	// Make our background grey
-	SDL_GL_MakeCurrent(mainWindow, mainContext);
+  mainWindow->render();
+	//SDL_GL_MakeCurrent(mainWindow, mainContext);
 	shader.UseProgram();
 	glClearColor(0.5, 0.5, 0.5, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -152,7 +137,8 @@ void Render()
 	map->render();
 
 	_boatHandler->render(translateId, translate);
-	SDL_GL_SwapWindow(mainWindow);
+  mainWindow->swapWindow();
+	//SDL_GL_SwapWindow(mainWindow);
 
 	ImGuiDraw();
 }
@@ -160,6 +146,7 @@ void Render()
 
 bool SetupBufferObjects()
 {
+
 	map->init();
 
 	if (!shader.Init())
@@ -187,76 +174,33 @@ bool SetupBufferObjects()
 bool Init()
 {
 	// Initialize SDL's Video subsystem
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
-	{
-		std::cout << "Failed to init SDL\n";
-		return false;
+  if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    {
+      std::cout << "Failed to init SDL\n";
+      return false;
 	}
+  mainWindow = new Window("main window", WINDOW_WIDTH, WINDOW_HEIGHT);
+  debugWindow = new Window("debug window", DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT);
+  bool mW = mainWindow->setup();
+  bool dW =debugWindow->setup();
+  if(!mW || !dW){
+    std::cout<<"failed to make windows"<<std::endl;
+    return false;
+  }
 
-	// Create our window centered at 512x512 resolution
-	mainWindow = SDL_CreateWindow(programName.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-		WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
-	debugWindow = SDL_CreateWindow(programName.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-		DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
-
-	// Check that everything worked out okay
-	if (!mainWindow)
-	{
-		std::cout << "Unable to create main window\n" << std::endl;;
-		CheckSDLError(__LINE__);
-		return false;
-	}
-	if (!debugWindow)
-	{
-		std::cout << "Unable to create debug window\n" << std::endl;;
-		CheckSDLError(__LINE__);
-		return false;
-	}
-
-	SetOpenGLAttributes();
-
-	// Create our opengl context and attach it to our window
-	mainContext = SDL_GL_CreateContext(mainWindow);
-	debugContext = SDL_GL_CreateContext(debugWindow);
-
-	// This makes our buffer swap syncronized with the monitor's vertical refresh
-	SDL_GL_SetSwapInterval(1);
-
-	// Init GLEW
-	SDL_GL_MakeCurrent(mainWindow, mainContext);
-	glewExperimental = GL_TRUE;
-	glewInit();
-
+  //Make the main window the current context
+	mainWindow->render();
 	//IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	io = &ImGui::GetIO(); (void)io;
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
-	//ImGui::StyleColorsClassic();
 
 	// Setup Platform/Renderer bindings
-	ImGui_ImplSDL2_InitForOpenGL(debugWindow, debugContext);
+	ImGui_ImplSDL2_InitForOpenGL(debugWindow->getWindow(), debugWindow->getContext());
 	ImGui_ImplOpenGL3_Init("#version 130");
-	return true;
-}
-
-bool SetOpenGLAttributes()
-{
-	// Set our OpenGL version.
-	// SDL_GL_CONTEXT_CORE gives us only the newer version, deprecated functions are disabled
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
-	// 3.2 is part of the modern versions of OpenGL, but most video cards whould be able to run it
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-
-	// Turn on double buffering with a 24bit Z buffer.
-	// You may need to change this to 16 or 32 for your system
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
 	return true;
 }
 
@@ -274,12 +218,8 @@ void Cleanup()
 	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
 
-	// Delete our OpengL context
-	SDL_GL_DeleteContext(mainContext);
-	SDL_GL_DeleteContext(debugContext);
-	// Destroy our window
-	SDL_DestroyWindow(mainWindow);
-	SDL_DestroyWindow(debugWindow);
+  delete mainWindow;
+  delete debugWindow;
 
 	// Shutdown SDL 2
 	SDL_Quit();

@@ -44,4 +44,4 @@ private:
 	GLuint vbo[3], vao[3];
 };
 
-#endif MAP_H
+#endif /* MAP_H */
