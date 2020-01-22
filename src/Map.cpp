@@ -2,7 +2,6 @@
 #include <iostream>
 
 Map::Map(const char* fileName) {
-	//SHPHandle _handle = SHPOpen("C:/Users/Alex Kinley/gitRepos/BoatSimulation/shapelib/110m_physical/ne_110m_land", "rb");
 	SHPHandle _handle = SHPOpen(fileName, "rb");
 
 	SHPGetInfo(_handle, &numEntities, &shapeType, minBound, maxBound);

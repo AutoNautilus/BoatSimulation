@@ -116,17 +116,13 @@ void ImGuiDraw() {
 	glClear(GL_COLOR_BUFFER_BIT);
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   debugWindow->swapWindow();
-	//SDL_GL_SwapWindow(debugWindow);
 }
 
 
 void Render()
 {
-	// First, render a square without any colors ( all vertexes will be black )
-	// ===================
-	// Make our background grey
   mainWindow->render();
-	//SDL_GL_MakeCurrent(mainWindow, mainContext);
+
 	shader.UseProgram();
 	glClearColor(0.5, 0.5, 0.5, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -138,7 +134,6 @@ void Render()
 
 	_boatHandler->render(translateId, translate);
   mainWindow->swapWindow();
-	//SDL_GL_SwapWindow(mainWindow);
 
 	ImGuiDraw();
 }
