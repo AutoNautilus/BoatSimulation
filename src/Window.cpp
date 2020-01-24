@@ -17,7 +17,7 @@ Window::~Window(){
 
 bool Window::setup(){
   printf("window size is (%d, %d)\n", _width, _height);
-	_window = SDL_CreateWindow("test", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, _width, _height, SDL_WINDOW_OPENGL);
+	_window = SDL_CreateWindow(_windowName.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, _width, _height, SDL_WINDOW_OPENGL);
   
 	// Check that everything worked out okay
 	if (_window == NULL)

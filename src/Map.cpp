@@ -141,13 +141,12 @@ Renderer* Map::makeRenderer() {
 					endIndex = obj->panPartStart[j + 1];
 				}
 			}
-			//renderer->addMesh(new Mesh(&points2[globalIndex], endIndex - startIndex, 3));
-			//glDrawArrays(GL_LINE_STRIP, globalIndex, endIndex - startIndex);
+			renderer->addMesh(new Mesh(&points2[globalIndex * 3], endIndex - startIndex, 3));
 			globalIndex += endIndex - startIndex;
 			startIndex = endIndex;
 		}
 	}
-	renderer->addMesh(new Mesh(points2, pointCount, 3));
+	//renderer->addMesh(new Mesh(points2, pointCount, 3));
 	renderer->addMesh(new Mesh(eastLine, 5, 3));
 	renderer->addMesh(new Mesh(westLine, 6, 3));
 

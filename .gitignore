@@ -4,3 +4,5 @@ imgui/
 build/
 includes/
 libs/
+deps/glew/
+deps/SDL2-2.0.10/

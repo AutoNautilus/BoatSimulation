@@ -14,6 +14,7 @@
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include "shapelib/shapefil.h"
+#include "CSVParser.h"
 
 #define PROGRAM_NAME "Tutorial2"
 
@@ -37,6 +38,8 @@ GLint translateId;
 GLint transformMatId;
 
 BoatHandler* _boatHandler;
+
+CSVFile* DNI_data;
 
 ImGuiIO* io;
 ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -123,17 +126,11 @@ void Render()
 {
 	mainWindow->render();
 
-	//shader.UseProgram();
-	//glClearColor(0.5, 0.5, 0.5, 1.0);
-	//glClear(GL_COLOR_BUFFER_BIT);
-
 	glUniform1f(scaleId, scale);
 	glUniform2f(translateId, translate[0], translate[1]);
 
-	//map->render();
-
 	_boatHandler->render(translateId, translate);
-	 mainWindow->swapWindow();
+  mainWindow->swapWindow();
 
 	ImGuiDraw();
 }
@@ -149,6 +146,7 @@ bool SetupBufferObjects()
 
 	shader.UseProgram();
 
+  
 	scaleId = glGetUniformLocation(shader.shaderProgram, "scale");
 	translateId = glGetUniformLocation(shader.shaderProgram, "translate");
 	transformMatId = glGetUniformLocation(shader.shaderProgram, "transform");
@@ -295,7 +293,13 @@ int main(int argc, char *argv[])
 {
 	//std::ofstream out("log.txt");
 	//std::cout.rdbuf(out.rdbuf());
-	std::cout << "made it here" << std::endl;
+
+  CSVParser* parser = new CSVParser();
+  CSVFile* DNI_data = parser->parser("../res/data/DNI.csv");
+  std::cout<<"file has " << DNI_data->columns.size() << " columns" << std::endl;
+  for(int i = 0; i < DNI_data->columns.size(); i++){
+    std::cout<<"column has " << DNI_data->columns[i]->data.size() << " data points" <<std::endl;
+  }
 	map = new Map("../deps/shapelib/110m_physical/ne_110m_land");
 
 	_boatHandler = new BoatHandler();
