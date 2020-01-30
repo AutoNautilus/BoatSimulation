@@ -31,6 +31,7 @@ Shader shader;
 
 Map* map;
 
+GLfloat halfLatLongGrid[2 * 360 * 2 * 180];
 float scale = 1;
 GLint scaleId;
 GLfloat translate[2] = { 0.0, 0.0 };
@@ -146,6 +147,7 @@ bool SetupBufferObjects()
 
 	shader.UseProgram();
 
+  shader.print_all();
   
 	scaleId = glGetUniformLocation(shader.shaderProgram, "scale");
 	translateId = glGetUniformLocation(shader.shaderProgram, "translate");
@@ -300,6 +302,17 @@ int main(int argc, char *argv[])
   for(int i = 0; i < DNI_data->columns.size(); i++){
     std::cout<<"column has " << DNI_data->columns[i]->data.size() << " data points" <<std::endl;
   }
+  float long;
+  float lat;
+  int counter = 0;
+  for(lat = -89.75; lat < 90.0; lat += 0.5){
+    for(long = -179.75; long < 180; lat += 0.5){
+      halfLatLongGrid[counter] = long;
+      counter++;
+      halfLatLongGrid[counter] = lat;
+      counter++;
+    }
+  }
 	map = new Map("../deps/shapelib/110m_physical/ne_110m_land");
 
 	_boatHandler = new BoatHandler();
@@ -323,29 +336,4 @@ int main(int argc, char *argv[])
 	Cleanup();
 
 	return 0;
-}
-
-void CheckSDLError(int line = -1)
-{
-	std::string error = SDL_GetError();
-
-	if (error != "")
-	{
-		std::cout << "SLD Error : " << error << std::endl;
-
-		if (line != -1)
-			std::cout << "\nLine : " << line << std::endl;
-
-		SDL_ClearError();
-	}
-}
-
-void PrintSDL_GL_Attributes()
-{
-	int value = 0;
-	SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &value);
-	std::cout << "SDL_GL_CONTEXT_MAJOR_VERSION : " << value << std::endl;
-
-	SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &value);
-	std::cout << "SDL_GL_CONTEXT_MINOR_VERSION: " << value << std::endl;
 }
